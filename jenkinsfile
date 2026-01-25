@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "ap-south-1"
+        AWS_REGION = "eu-north-1"
         ECR_REPO = "nginx-welcome"
-        AWS_ACCOUNT_ID = "123456789012"
+        AWS_ACCOUNT_ID = "206716568967"
         IMAGE_TAG = "${BUILD_NUMBER}"
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     }
@@ -14,7 +14,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/your-org/nginx-welcome.git'
+                    url: 'git@github.com:brahmaji99/Hackathon_repo.git'
             }
         }
 
