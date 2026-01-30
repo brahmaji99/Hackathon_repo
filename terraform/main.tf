@@ -35,7 +35,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = "ecs-tasks.amazonaws.com"aws_lb_target_group
+        Service = "ecs-tasks.amazonaws.com"
       }
       Action = "sts:AssumeRole"
     }]
