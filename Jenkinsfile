@@ -25,10 +25,12 @@ pipeline {
 
   stages {
 
-    stage('Checkout Code') {
-      steps {
-        checkout scm
-      }
+     stage('Checkout Code') {
+            steps {
+                git branch: 'development',
+                    credentialsId: 'jenkins-ssh',
+                    url: 'git@github.com:brahmaji99/Hackathon_repo.git'
+            }
     }
 
     stage('Docker Build') {
