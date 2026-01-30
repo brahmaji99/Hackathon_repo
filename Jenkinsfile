@@ -1,33 +1,58 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        AWS_REGION = "eu-north-1"
-        ECR_REPO = "nginx-welcome"
-        AWS_ACCOUNT_ID = "206716568967"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  parameters {
+    choice(
+      name: 'ENV',
+      choices: ['dev', 'prod'],
+      description: 'Select environment'
+    )
+    string(
+      name: 'IMAGE_TAG',
+      defaultValue: 'latest',
+      description: 'Docker image tag'
+    )
+  }
+
+  environment {
+    AWS_REGION = "eu-north-1"
+    ACCOUNT_ID = "206716568967"
+    ECR_REPO   = "nginx-welcome"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    IMAGE_URI  = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+    TF_DIR     = "terraform"
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
+    stage('Docker Build') {
+      steps {
+        sh '''
+          docker build -t ${ECR_REPO}:${IMAGE_TAG} .
+        '''
+      }
+    }
 
-        stage('Checkout Code') {
+    stage('Trivy Image Scan') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'jenkins-ssh',
-                    url: 'git@github.com:brahmaji99/Hackathon_repo.git'
+                script {
+                echo "Running Trivy scan inside Docker..."
+                sh '''
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:latest image --exit-code 1 --severity CRITICAL,HIGH ${ECR_REPO}:${IMAGE_TAG}
+                '''
+                }
             }
-        }
+    }
 
-        stage('Build Docker Image') {
-            steps {
-                sh """
-                docker build -t ${ECR_REPO}:${IMAGE_TAG} .
-                """
-            }
-        }
-
-        stage('ECR Login') {
+    stage('ECR Login') {
           steps {
             sh '''
                 aws --version
@@ -36,33 +61,66 @@ pipeline {
                 | docker login --username AWS --password-stdin 206716568967.dkr.ecr.eu-north-1.amazonaws.com
              '''
            }
-       }
-
-        stage('Tag Image') {
-            steps {
-                sh """
-                docker tag ${ECR_REPO}:${IMAGE_TAG} \
-                ${ECR_URI}/${ECR_REPO}:${IMAGE_TAG}
-                """
-            }
-        }
-
-        stage('Push Image to ECR') {
-            steps {
-                sh """
-                docker push ${ECR_URI}/${ECR_REPO}:${IMAGE_TAG}
-                """
-            }
-        }
     }
 
-    post {
-        success {
-            echo "✅ Image pushed successfully: ${ECR_URI}/${ECR_REPO}:${IMAGE_TAG}"
-        }
-        failure {
-            echo "❌ Pipeline failed"
-        }
+    stage('Push Image to ECR') {
+      steps {
+        sh '''
+          docker tag ${ECR_REPO}:${IMAGE_TAG} ${IMAGE_URI}
+          docker push ${IMAGE_URI}
+        '''
+      }
     }
+
+    stage('Terraform Init') {
+      steps {
+        dir("${TF_DIR}") {
+          sh '''
+            terraform init
+          '''
+        }
+      }
+    }
+
+    stage('Select Terraform Workspace') {
+      steps {
+        dir("${TF_DIR}") {
+          sh '''
+            terraform workspace select ${ENV} || terraform workspace new ${ENV}
+          '''
+        }
+      }
+    }
+
+    stage('Terraform Plan') {
+      steps {
+        dir("${TF_DIR}") {
+          sh '''
+            terraform plan \
+              -var="ecr_image_uri=${IMAGE_URI}"
+          '''
+        }
+      }
+    }
+
+    stage('Terraform Apply') {
+      steps {
+        dir("${TF_DIR}") {
+          sh '''
+            terraform apply -auto-approve \
+              -var="ecr_image_uri=${IMAGE_URI}"
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Deployment successful for ${ENV}"
+    }
+    failure {
+      echo "Deployment failed"
+    }
+  }
 }
-
