@@ -28,16 +28,18 @@ pipeline {
         }
 
         stage('Trivy Image Scan') {
-           steps {
+            steps {
+                script {
+                echo "Running Trivy scan inside Docker..."
                 sh '''
-                echo "Running Trivy scan..."
-                trivy image \
-                    --exit-code 1 \
-                    --severity CRITICAL,HIGH \
-                    ${ECR_REPO}:${IMAGE_TAG}
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:latest image --exit-code 1 --severity CRITICAL,HIGH ${ECR_REPO}:${IMAGE_TAG}
                 '''
-             }
+                }
+            }
         }
+
 
         stage('ECR Login') {
           steps {
