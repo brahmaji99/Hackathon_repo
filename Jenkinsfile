@@ -27,6 +27,18 @@ pipeline {
             }
         }
 
+        stage('Trivy Image Scan') {
+           steps {
+                sh '''
+                echo "Running Trivy scan..."
+                trivy image \
+                    --exit-code 1 \
+                    --severity CRITICAL,HIGH \
+                    ${ECR_REPO}:${IMAGE_TAG}
+                '''
+             }
+        }
+
         stage('ECR Login') {
           steps {
             sh '''
