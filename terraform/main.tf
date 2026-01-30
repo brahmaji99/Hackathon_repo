@@ -28,14 +28,14 @@ resource "aws_ecs_cluster" "this" {
 #IAM for ecs task
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "${local.name_prefix}-ecs-task-exec"
+  name = "${local.name_prefix}-ecs-task-exec-v2"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = "ecs-tasks.amazonaws.com"
+        Service = "ecs-tasks.amazonaws.com"aws_lb_target_group
       }
       Action = "sts:AssumeRole"
     }]
@@ -50,7 +50,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_exec_policy" {
 #Security group
 
 resource "aws_security_group" "ecs_sg" {
-  name        = "${local.name_prefix}-sg"
+  name        = "${local.name_prefix}-sg-v2"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -105,7 +105,7 @@ resource "aws_lb" "this" {
 #Target Group & Listener
 
 resource "aws_lb_target_group" "this" {
-  name        = "${local.name_prefix}-tg"
+  name        = "${local.name_prefix}-tg-v2"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.default.id
