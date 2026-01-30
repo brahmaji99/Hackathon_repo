@@ -27,3 +27,15 @@ docker run -d \
 
 
 we have to make sure the above dockerfile needs to create on aws ec2-instance where jenkins application has to be configured along with docker and aws configured.
+
+Note: These are prerequisites for CI & CD through jenkins
+Prerequisites (Important)
+Jenkins Agent must have:
+
+Docker
+
+AWS CLI
+
+Terraform
+
+IAM role OR AWS credentials configured
