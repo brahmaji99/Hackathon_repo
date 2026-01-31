@@ -24,8 +24,7 @@ pipeline {
   }
 
   stages {
-
-     stage('Checkout Code') {
+    stage('Checkout Code') {
             steps {
                 git branch: 'development',
                     credentialsId: 'jenkins-ssh',
@@ -75,7 +74,7 @@ pipeline {
     }
 
     stage('Terraform Init') {
-    steps {
+      steps {
         dir("${TF_DIR}") {
             sh """
               terraform init -reconfigure \
@@ -85,27 +84,27 @@ pipeline {
        }
     }
 
-    stage('Terraform Workspace') {
-        steps {
-              dir("${TF_DIR}") {
-                  sh """
-                    terraform workspace select ${ENV} || terraform workspace new ${ENV}
-                    terraform workspace show
-                  """
-              }
-          }
-      }
+    // stage('Terraform Workspace') {
+    //     steps {
+    //           dir("${TF_DIR}") {
+    //               sh """
+    //                 terraform workspace select ${ENV} || terraform workspace new ${ENV}
+    //                 terraform workspace show
+    //               """
+    //           }
+    //       }
+    //   }
 
     stage('Terraform Workspace') {
-    steps {
+      steps {
         dir("${TF_DIR}") {
             sh """
               terraform workspace select ${ENV} || terraform workspace new ${ENV}
               terraform workspace show
             """
-        }
+         }
+       }
     }
-}
 
 
 
