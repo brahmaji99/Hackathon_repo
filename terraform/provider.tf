@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.3.0"
 
   backend "s3" {
-    bucket       = "brahma-terraform-state-bucket"
+    bucket       = "brahma-terraform-bucket"
     #key            = "ecs/${terraform.workspace}/terraform.tfstate"
     key            = "ecs/dev/terraform.tfstate"
     region       = "eu-north-1"
