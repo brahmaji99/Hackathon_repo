@@ -146,3 +146,23 @@ resource "aws_ecs_service" "this" {
 
   depends_on = [aws_lb_listener.http]
 }
+
+#To create opensearch
+resource "aws_opensearch_domain" "this" {
+  domain_name    = "incidentlens"
+  engine_version = "OpenSearch_2.11"
+ 
+  cluster_config {
+    instance_type = "t3.small.search"
+    instance_count = 2
+  }
+ 
+  ebs_options {
+    ebs_enabled = true
+    volume_size = 20
+  }
+ 
+  snapshot_options {
+    automated_snapshot_start_hour = 3
+  }
+}
