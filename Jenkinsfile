@@ -76,12 +76,36 @@ pipeline {
 
     stage('Terraform Init') {
     steps {
-        sh """
-          terraform init -reconfigure \
-            -backend-config="key=ecs/dev/terraform.tfstate"
-        """
-      }
+        dir("${TF_DIR}") {
+            sh """
+              terraform init -reconfigure \
+                -backend-config="key=ecs/${ENV}/terraform.tfstate"
+            """
+           }
+       }
     }
+
+    stage('Terraform Workspace') {
+        steps {
+              dir("${TF_DIR}") {
+                  sh """
+                    terraform workspace select ${ENV} || terraform workspace new ${ENV}
+                    terraform workspace show
+                  """
+              }
+          }
+      }
+
+    stage('Terraform Workspace') {
+    steps {
+        dir("${TF_DIR}") {
+            sh """
+              terraform workspace select ${ENV} || terraform workspace new ${ENV}
+              terraform workspace show
+            """
+        }
+    }
+}
 
 
 
