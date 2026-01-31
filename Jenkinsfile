@@ -75,14 +75,15 @@ pipeline {
     }
 
     stage('Terraform Init') {
-      steps {
-        dir("${TF_DIR}") {
-          sh '''
-            terraform init
-          '''
-        }
+    steps {
+        sh '''
+          terraform workspace select ${ENV} || terraform workspace new ${ENV}
+          terraform init -reconfigure \
+            -backend-config="key=ecs/${ENV}/terraform.tfstate"
+        '''
       }
-    }
+   }
+
 
     stage('Select Terraform Workspace') {
       steps {
