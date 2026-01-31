@@ -3,6 +3,8 @@ terraform {
 
   backend "s3" {
     bucket       = "my-terraform-state-bucket"
+    #key            = "ecs/${terraform.workspace}/terraform.tfstate"
+    key            = "ecs/dev/terraform.tfstate"
     region       = "eu-north-1"
     encrypt      = true
     use_lockfile = true
