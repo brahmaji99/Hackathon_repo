@@ -69,7 +69,7 @@ pipeline {
                 dir("${TF_DIR}") {
                     sh """
                     terraform init -reconfigure \
-                        -backend-config="demo2-terraform-state-bucket
+                        -backend-config="demo2-terraform-state-bucket"
                         -backend-config="region=${AWS_REGION}" \
                         -backend-config="key=ecs/${ENV}/terraform.tfstate" \
                     
