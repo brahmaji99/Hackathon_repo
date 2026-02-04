@@ -6,8 +6,16 @@ variable "project_name" {
   default = "ecs-app"
 }
 
+variable "env" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"   # optional
+}
+
+
 variable "ecr_image_uri" {
   description = "ECR image URI with tag"
+  type        = string
 }
 
 variable "container_port" {
