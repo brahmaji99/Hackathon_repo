@@ -1,18 +1,15 @@
 terraform {
   required_version = ">= 1.3.0"
 
+ terraform {
   backend "s3" {
-    bucket       = "demo2-terraform-state-bucket"
-    #key            = "ecs/${terraform.workspace}/terraform.tfstate"
-    key            = "ecs/dev/terraform.tfstate"
-    region       = "eu-north-1"
     encrypt      = true
+    region       = "eu-north-1"
     use_lockfile = true
   }
+}
 
-
-
-  required_providers {
+ required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
