@@ -25,7 +25,7 @@ pipeline {
         ECR_REPO          = "nginx-welcome"
         TF_DIR            = "terraform"
         TF_IN_AUTOMATION  = "true"
-        TF_WORKSPACE     = "default"
+        TF_WORKSPACE      = "${ENV}"
     }
 
     stages {
@@ -112,14 +112,13 @@ pipeline {
             steps {
                 dir("${TF_DIR}") {
                     sh """
-                     # Force Terraform into default workspace BEFORE init
-                    terraform workspace select default || true
+                    //  # Force Terraform into default workspace BEFORE init
+                    // terraform workspace select default || true
                     terraform init -reconfigure \
                       -backend-config="bucket=demo2-terraform-state-bucket" \
                       -backend-config="region=${AWS_REGION}" \
                       -backend-config="key=ecs/${ENV}/terraform.tfstate"
 
-                    terraform workspace select ${ENV} || terraform workspace new ${ENV}
                     terraform workspace show
                     """
                 }
