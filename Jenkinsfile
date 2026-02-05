@@ -7,6 +7,11 @@ pipeline {
             choices: ['dev', 'qa', 'prod'],
             description: 'Select the environment'
         )
+        booleanParam(
+            name: 'DESTROY',
+            defaultValue: false,
+            description: 'Destroy Terraform resources'
+        )
         string(
             name: 'IMAGE_TAG',
             defaultValue: 'latest',
@@ -63,6 +68,15 @@ pipeline {
         }
 
         // ---------------- Terraform Stages ----------------
+        stage('Terraform Format Check') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                    terraform fmt -check -recursive
+                    """
+                }
+            }
+        }
 
         stage('Terraform Init') {
             steps {
@@ -77,7 +91,16 @@ pipeline {
                 }
             }
         }
-
+       
+       stage('Terraform Validate') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                    terraform validate
+                    """
+                }
+            }
+        }
         stage('Terraform Workspace') {
             steps {
                 dir("${TF_DIR}") {
@@ -102,6 +125,9 @@ pipeline {
         }
 
         stage('Terraform Apply') {
+            when {
+                expression { params.DESTROY == false }
+            }
             steps {
                 dir("${TF_DIR}") {
                     sh """
@@ -112,14 +138,43 @@ pipeline {
                 }
             }
         }
+
+        stage('Terraform Destroy') {
+            when {
+                expression { params.DESTROY == true }
+            }
+            steps {
+                dir("${TF_DIR}") {
+                    sh """
+                    terraform destroy -auto-approve -input=false \
+                    -var="env=${ENV}" \
+                    -var="ecr_image_uri=dummy"
+                    """
+                }
+            }
+        }
+
     }
 
     post {
         success {
-            echo "Deployment successful for ${ENV}"
+            script {
+                if (params.DESTROY) {
+                    echo "Terraform destroy completed successfully for environment: ${ENV}"
+                } else {
+                    echo "Deployment successful for ${ENV}"
+                }
+            }
         }
         failure {
-            echo "Deployment failed for ${ENV}"
+            script {
+                if (params.DESTROY) {
+                    echo "Terraform destroy FAILED for environment: ${ENV}"
+                } else {
+                    echo "Deployment failed for ${ENV}"
+                }
+            }
         }
     }
+
 }
