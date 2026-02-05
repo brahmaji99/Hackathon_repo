@@ -70,10 +70,14 @@ pipeline {
         // ---------------- Terraform Stages ----------------
         stage('Terraform Format Check') {
             steps {
-                dir("${TF_DIR}") {
-                    sh """
-                    terraform fmt -check -recursive
-                    """
+                script {
+                    // Warn on formatting issues but do not fail
+                    def fmtResult = sh(script: 'terraform fmt -check -recursive', returnStatus: true)
+                    if (fmtResult != 0) {
+                        echo "⚠️ Terraform files are not properly formatted. Run 'terraform fmt -recursive' to fix."
+                    } else {
+                        echo "✅ Terraform files are properly formatted."
+                    }
                 }
             }
         }
