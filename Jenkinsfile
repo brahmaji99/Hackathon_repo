@@ -58,6 +58,9 @@ pipeline {
         }
 
         stage('Docker Build & Scan') {
+             when {
+                expression { params.DESTROY == false }
+            }
             steps {
                 sh """
                 docker build -t ${ECR_REPO}:${IMAGE_TAG} .
@@ -69,6 +72,9 @@ pipeline {
         }
 
         stage('ECR Login & Push') {
+             when {
+                expression { params.DESTROY == false }
+            }
             steps {
                 sh """
                 aws ecr get-login-password --region ${AWS_REGION} \
