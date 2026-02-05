@@ -112,8 +112,6 @@ pipeline {
             steps {
                 dir("${TF_DIR}") {
                     sh """
-                    //  # Force Terraform into default workspace BEFORE init
-                    // terraform workspace select default || true
                     terraform init -reconfigure \
                       -backend-config="bucket=demo2-terraform-state-bucket" \
                       -backend-config="region=${AWS_REGION}" \
