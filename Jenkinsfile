@@ -32,11 +32,22 @@ pipeline {
         stage('Set IMAGE_URI') {
             steps {
                 script {
-                    env.IMAGE_TAG = "${BUILD_NUMBER}"
-                    env.IMAGE_URI = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+                    if (params.DESTROY) {
+                        // Image not needed during destroy
+                        env.IMAGE_URI = "dummy"
+                        env.IMAGE_TAG = "dummy"
+                    } else {
+                        // Respect Jenkins parameter
+                        env.IMAGE_TAG = params.IMAGE_TAG
+                        env.IMAGE_URI = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${env.IMAGE_TAG}"
+                    }
+
+                    echo "Using IMAGE_TAG=${env.IMAGE_TAG}"
+                    echo "Using IMAGE_URI=${env.IMAGE_URI}"
                 }
             }
         }
+
 
         stage('Checkout Code') {
             steps {
