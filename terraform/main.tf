@@ -149,7 +149,7 @@ resource "aws_ecs_service" "this" {
 
 #To create opensearch
 resource "aws_opensearch_domain" "this" {
-  domain_name    = "incidentlens"
+  domain_name    = "${local.env}-incidentlens"
   engine_version = "OpenSearch_2.11"
  
   cluster_config {

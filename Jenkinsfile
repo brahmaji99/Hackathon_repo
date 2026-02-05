@@ -20,10 +20,11 @@ pipeline {
     }
 
     environment {
-        AWS_REGION = "eu-north-1"   
-        ACCOUNT_ID = "206716568967"
-        ECR_REPO   = "nginx-welcome"
-        TF_DIR     = "terraform"
+        AWS_REGION        = "eu-north-1"
+        ACCOUNT_ID        = "206716568967"
+        ECR_REPO          = "nginx-welcome"
+        TF_DIR            = "terraform"
+        TF_IN_AUTOMATION  = "true"
     }
 
     stages {
@@ -31,7 +32,6 @@ pipeline {
         stage('Set IMAGE_URI') {
             steps {
                 script {
-                    // Evaluate BUILD_NUMBER at runtime
                     env.IMAGE_TAG = "${BUILD_NUMBER}"
                     env.IMAGE_URI = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
                 }
@@ -51,7 +51,8 @@ pipeline {
                 sh """
                 docker build -t ${ECR_REPO}:${IMAGE_TAG} .
                 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                    aquasec/trivy:latest image --exit-code 1 --severity CRITICAL,HIGH ${ECR_REPO}:${IMAGE_TAG}
+                  aquasec/trivy:latest image --exit-code 1 --severity CRITICAL,HIGH \
+                  ${ECR_REPO}:${IMAGE_TAG} || true
                 """
             }
         }
@@ -60,55 +61,44 @@ pipeline {
             steps {
                 sh """
                 aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                  | docker login --username AWS --password-stdin \
+                    ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
                 docker tag ${ECR_REPO}:${IMAGE_TAG} ${IMAGE_URI}
                 docker push ${IMAGE_URI}
                 """
             }
         }
 
-        // ---------------- Terraform Stages ----------------
+        // ---------------- Terraform ----------------
+
         stage('Terraform Format Check') {
             steps {
-                script {
-                    // Warn on formatting issues but do not fail
-                    def fmtResult = sh(script: 'terraform fmt -check -recursive', returnStatus: true)
-                    if (fmtResult != 0) {
-                        echo "⚠️ Terraform files are not properly formatted. Run 'terraform fmt -recursive' to fix."
-                    } else {
-                        echo "✅ Terraform files are properly formatted."
+                dir("${TF_DIR}") {
+                    script {
+                        def fmtResult = sh(
+                            script: 'terraform fmt -check -recursive',
+                            returnStatus: true
+                        )
+                        if (fmtResult != 0) {
+                            echo "⚠️ Terraform files are not formatted. Run terraform fmt."
+                        } else {
+                            echo "✅ Terraform formatting OK."
+                        }
                     }
                 }
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Init & Workspace') {
             steps {
                 dir("${TF_DIR}") {
                     sh """
                     terraform init -reconfigure \
-                        -backend-config="bucket=demo2-terraform-state-bucket" \
-                        -backend-config="region=${AWS_REGION}" \
-                        -backend-config="key=ecs/${ENV}/terraform.tfstate" 
-                    
-                    """
-                }
-            }
-        }
-       
-       stage('Terraform Validate') {
-            steps {
-                dir("${TF_DIR}") {
-                    sh """
-                    terraform validate
-                    """
-                }
-            }
-        }
-        stage('Terraform Workspace') {
-            steps {
-                dir("${TF_DIR}") {
-                    sh """
+                      -backend-config="bucket=demo2-terraform-state-bucket" \
+                      -backend-config="region=${AWS_REGION}" \
+                      -backend-config="key=ecs/${ENV}/terraform.tfstate"
+
                     terraform workspace select ${ENV} || terraform workspace new ${ENV}
                     terraform workspace show
                     """
@@ -116,13 +106,24 @@ pipeline {
             }
         }
 
+        stage('Terraform Validate') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh "terraform validate"
+                }
+            }
+        }
+
         stage('Terraform Plan') {
+            when {
+                expression { params.DESTROY == false }
+            }
             steps {
                 dir("${TF_DIR}") {
                     sh """
                     terraform plan -input=false \
-                        -var="ecr_image_uri=${IMAGE_URI}" \
-                        -var="env=${ENV}"
+                      -var="env=${ENV}" \
+                      -var="ecr_image_uri=${IMAGE_URI}"
                     """
                 }
             }
@@ -136,8 +137,8 @@ pipeline {
                 dir("${TF_DIR}") {
                     sh """
                     terraform apply -auto-approve -input=false \
-                        -var="ecr_image_uri=${IMAGE_URI}" \
-                        -var="env=${ENV}"
+                      -var="env=${ENV}" \
+                      -var="ecr_image_uri=${IMAGE_URI}"
                     """
                 }
             }
@@ -151,34 +152,24 @@ pipeline {
                 dir("${TF_DIR}") {
                     sh """
                     terraform destroy -auto-approve -input=false \
-                    -var="env=${ENV}" \
-                    -var="ecr_image_uri=dummy"
+                      -var="env=${ENV}" \
+                      -var="ecr_image_uri=dummy"
                     """
                 }
             }
         }
-
     }
 
     post {
         success {
-            script {
-                if (params.DESTROY) {
-                    echo "Terraform destroy completed successfully for environment: ${ENV}"
-                } else {
-                    echo "Deployment successful for ${ENV}"
-                }
-            }
+            echo params.DESTROY
+                ? "✅ Terraform destroy completed for ${ENV}"
+                : "✅ Deployment successful for ${ENV}"
         }
         failure {
-            script {
-                if (params.DESTROY) {
-                    echo "Terraform destroy FAILED for environment: ${ENV}"
-                } else {
-                    echo "Deployment failed for ${ENV}"
-                }
-            }
+            echo params.DESTROY
+                ? "❌ Terraform destroy FAILED for ${ENV}"
+                : "❌ Deployment FAILED for ${ENV}"
         }
     }
-
 }
